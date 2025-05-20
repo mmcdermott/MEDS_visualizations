@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "MEDS_visualizations"
+dynamic = ["version"]
+authors = [
+  { name="Matthew McDermott", email="mattmcdermott8@gmail.com" },
+]
+description = "A framework for compiling simple, mapreduce style pipelines over MEDS datasets."
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  "polars >= 1.26.0, <= 1.27.9",
+  "pyarrow",
+  "hydra-core",
+  "numpy",
+  "meds~=0.4.0",
+  "filelock",
+  "pytest",
+  "meds_testing_helpers~=0.3.0",
+  "pretty-print-directory",
+]
+
+[tool.setuptools_scm]
+
+[project.optional-dependencies]
+dev = ["pre-commit<4", "ruff"]
+tests = ["pytest-cov"]
+
+[project.urls]
+Homepage = "https://github.com/mmcdermott/MEDS_visualizations"
+Issues = "https://github.com/mmcdermott/MEDS_visualizations/issues"
+
+[tool.pytest.ini_options]
+addopts = [
+  "--color=yes",
+  "--doctest-modules",
+  "--ignore=docs",
+  "--doctest-glob=*.md",
+]
+doctest_optionflags = ["NORMALIZE_WHITESPACE", "ELLIPSIS"]
+
+[tool.coverage.report]
+exclude_also = ["logger\\.debug", "except ImportError:", "if TYPE_CHECKING:"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 110
+
+# Enable linters
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "DTZ", # flake8-datetimez
+    "RUF", # Ruff-specific rules
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+    "N",   # pep8-naming
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Unused imports in __init__ files
+
+[tool.ruff.lint.pep8-naming]
+extend-ignore-names = ["*MEDS*"]  # Ignore MEDS in variable names
