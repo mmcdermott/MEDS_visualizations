@@ -18,21 +18,20 @@ classifiers = [
 ]
 dependencies = [
   "polars >= 1.26.0, <= 1.27.9",
-  "pyarrow",
-  "hydra-core",
-  "numpy",
+  "plotly",
+  "seaborn",
   "meds~=0.4.0",
-  "filelock",
-  "pytest",
-  "meds_testing_helpers~=0.3.0",
-  "pretty-print-directory",
 ]
 
 [tool.setuptools_scm]
 
 [project.optional-dependencies]
 dev = ["pre-commit<4", "ruff"]
-tests = ["pytest-cov"]
+tests = [
+  "pytest-cov",
+  "pytest",
+  "meds_testing_helpers~=0.3.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/mmcdermott/MEDS_visualizations"
@@ -74,4 +73,4 @@ select = [
 "__init__.py" = ["F401"]  # Unused imports in __init__ files
 
 [tool.ruff.lint.pep8-naming]
-extend-ignore-names = ["*MEDS*"]  # Ignore MEDS in variable names
+extend-ignore-names = ["*MEDS*", "Y*", "X*", "T", "P"]  # Ignore MEDS in variable names

@@ -1,23 +1,26 @@
-import polars as pl
-from tqdm.auto import tqdm
-from meds import (
-    subject_id_field, prediction_time_field, time_field, code_field,
-    subject_splits_filepath,
-    tuning_split, train_split, held_out_split
-)
-from pathlib import Path
-from datetime import datetime, timedelta
 from dataclasses import dataclass
-from functools import cached_property
-from matplotlib import pyplot as plt
-import numpy as np
-import re
-import polars.selectors as cs
-from sklearn.metrics import roc_auc_score
 from datetime import timedelta
+from functools import cached_property
+from pathlib import Path
+
+import numpy as np
+import polars as pl
+import polars.selectors as cs
+from matplotlib import pyplot as plt
+from meds import (
+    code_field,
+    prediction_time_field,
+    subject_id_field,
+    subject_splits_filepath,
+    time_field,
+    tuning_split,
+)
+from sklearn.metrics import roc_auc_score
+from tqdm.auto import tqdm
 
 SECONDS_PER_DAY = 60 * 60 * 24
 MICROSECONDS_PER_DAY = 1_000_000 * SECONDS_PER_DAY
+
 
 @dataclass
 class TrajectorySpec:
@@ -50,15 +53,17 @@ class TrajectorySpec:
         for sp, subj in self.subjects_by_split.items():
             out[sp] = self.index_df.filter(pl.col(subject_id_field).is_in(subj))
         return out
-    
+
     def real_data(self, split: str) -> pl.DataFrame:
-        data_dir = (self.data_root / "data")
+        data_dir = self.data_root / "data"
         data_fp_by_shard = {
             fp.relative_to(data_dir).with_suffix("").as_posix(): fp for fp in data_dir.rglob("*.parquet")
         }
 
         if any(shard.startswith(f"{split}/") for shard in data_fp_by_shard):
-            data_fp_by_shard = {shard: fp for shard, fp in data_fp_by_shard.items() if shard.startswith(f"{split}/")}
+            data_fp_by_shard = {
+                shard: fp for shard, fp in data_fp_by_shard.items() if shard.startswith(f"{split}/")
+            }
             do_filter = False
         else:
             do_filter = True
@@ -111,9 +116,18 @@ class TrajectorySpec:
         idx_df = self.index_df.select(subject_id_field, prediction_time_field)
 
         for k, v in tqdm(list(self._raw_trajectories.items())):
-            split = k.split("/")[0]
             df = v.join(idx_df, on=subject_id_field, how="left", maintain_order="left")
-            cols = [c for c in v.columns if c not in {subject_id_field, prediction_time_field, "_task_sample_id", f"orig_{subject_id_field}"}]
+            cols = [
+                c
+                for c in v.columns
+                if c
+                not in {
+                    subject_id_field,
+                    prediction_time_field,
+                    "_task_sample_id",
+                    f"orig_{subject_id_field}",
+                }
+            ]
             out[k] = df.select(subject_id_field, prediction_time_field, *cols)
 
         return out
@@ -130,10 +144,11 @@ class TrajectorySpec:
 
         raise ValueError(f"Unrecognized key {k}! Valid trajectory keys are {list(self.trajectories.keys())}")
 
+
 @dataclass
 class PlotSpec:
     split: str = tuning_split
-    time_span: timedelta = timedelta(days=5*365)
+    time_span: timedelta = timedelta(days=5 * 365)
     n_bins: int = 100
 
     def __post_init__(self):
@@ -156,7 +171,7 @@ class PlotSpec:
         labels = ["ERROR"]
         for i in range(self.n_bins - 1):
             left = self.time_bins_days[i]
-            right = self.time_bins_days[i+1]
+            right = self.time_bins_days[i + 1]
             labels.append(f"[{left:.2f}d,{right:.2f}d)")
         labels.append(f">{self.time_bins_days[-1]}d")
         return labels
@@ -165,16 +180,13 @@ class PlotSpec:
     def binned_time_delta_expr(self) -> pl.Expr:
         time_delta = pl.col(time_field) - pl.col(prediction_time_field)
         time_delta_days = time_delta.dt.total_microseconds() / MICROSECONDS_PER_DAY
-        return (
-            time_delta_days
-            .cut(self.time_bins_days, labels=self.time_bins_labels, left_closed=True)
-        )
+        return time_delta_days.cut(self.time_bins_days, labels=self.time_bins_labels, left_closed=True)
 
     def matching_measurements(self, df: pl.DataFrame) -> pl.DataFrame:
         id_fields = [subject_id_field]
         if prediction_time_field in df.collect_schema():
             id_fields.append(prediction_time_field)
-            
+
         return (
             df.filter(~pl.col(code_field).str.starts_with("TIMELINE//"))
             .group_by(*id_fields, time_field, maintain_order=True)
@@ -182,7 +194,7 @@ class PlotSpec:
             .select(
                 *id_fields,
                 time_field,
-                pl.col("n_measurements").cum_sum().over(id_fields).alias("cumulative_measurements")
+                pl.col("n_measurements").cum_sum().over(id_fields).alias("cumulative_measurements"),
             )
         )
 
@@ -193,7 +205,7 @@ class PlotSpec:
                 subject_id_field,
                 prediction_time_field,
                 self.binned_time_delta_expr.alias("time_delta_bin"),
-                "cumulative_measurements"
+                "cumulative_measurements",
             )
             .group_by(subject_id_field, prediction_time_field, "time_delta_bin")
             .agg(pl.col("cumulative_measurements").max())
@@ -206,12 +218,17 @@ class PlotSpec:
             raise ValueError(f"No trajectories recorded for {self.split}")
         elif len(rel_keys) == 1:
             return self.align_trajectories(T[rel_keys[0]])
-        
+
         aligned_dfs = [self.align_trajectories(T[k]) for k in tqdm(rel_keys, desc="Aligning Trajectories")]
         id_cols = [subject_id_field, prediction_time_field, "time_delta_bin"]
 
         meas_dtype = aligned_dfs[0].collect_schema()["cumulative_measurements"]
-        cum_meas_list = pl.col("cumulative_measurements").cast(pl.List(meas_dtype)).fill_null([]).alias("cumulative_measurements")
+        cum_meas_list = (
+            pl.col("cumulative_measurements")
+            .cast(pl.List(meas_dtype))
+            .fill_null([])
+            .alias("cumulative_measurements")
+        )
 
         def check_nulls(df: pl.DataFrame):
             n_nulls = df.select(pl.col("cumulative_measurements").is_null().sum()).item()
@@ -220,23 +237,20 @@ class PlotSpec:
 
         df = aligned_dfs[0].with_columns(cum_meas_list)
         check_nulls(df)
-        
+
         for samp_df in tqdm(aligned_dfs[1:], desc="Joining Trajectories"):
             samp_df = samp_df.with_columns(cum_meas_list)
             check_nulls(samp_df)
-            
-            df = (
-                df.join(samp_df, on=id_cols, how="full", coalesce=True)
-                .select(
-                    *id_cols,
-                    pl.concat_list(
-                        pl.col("cumulative_measurements").fill_null([]),
-                        pl.col("cumulative_measurements_right").fill_null([]),
-                    ).alias("cumulative_measurements")
-                )
+
+            df = df.join(samp_df, on=id_cols, how="full", coalesce=True).select(
+                *id_cols,
+                pl.concat_list(
+                    pl.col("cumulative_measurements").fill_null([]),
+                    pl.col("cumulative_measurements_right").fill_null([]),
+                ).alias("cumulative_measurements"),
             )
             check_nulls(df)
-        
+
         return self.pivot_trajectories(df)
 
     def pivot_trajectories(self, df: pl.DataFrame) -> pl.DataFrame:
@@ -246,9 +260,8 @@ class PlotSpec:
             values="cumulative_measurements",
             aggregate_function=None,
             maintain_order=True,
-        ).select(
-            subject_id_field, prediction_time_field, *self.time_bins_labels[1:]
-        )
+        ).select(subject_id_field, prediction_time_field, *self.time_bins_labels[1:])
+
 
 def simple_plot(P: PlotSpec, T: TrajectorySpec):
     real = P.pivot_trajectories(P.align_trajectories(T.real_futures(tuning_split)))
@@ -260,43 +273,36 @@ def simple_plot(P: PlotSpec, T: TrajectorySpec):
 
     real_summ = global_agg(real)
 
-    agg_agged = agged.with_columns(
-        *[pl.col(c).list.mean() for c in P.time_bins_labels[1:]]
-    )
+    agg_agged = agged.with_columns(*[pl.col(c).list.mean() for c in P.time_bins_labels[1:]])
     agg_summ = global_agg(agg_agged)
 
     # To-do: Use std for fill between
 
-    plt.plot(
-        P.time_bins_days,
-        real_summ[0].to_numpy()[0],
-        label="real"
-    )
-    plt.plot(
-        P.time_bins_days,
-        agg_summ[0].to_numpy()[0],
-        label="agg"
-    )
+    plt.plot(P.time_bins_days, real_summ[0].to_numpy()[0], label="real")
+    plt.plot(P.time_bins_days, agg_summ[0].to_numpy()[0], label="agg")
     plt.legend()
     plt.title("Average measurements post generation over time")
     plt.ylabel("# measurements (cumulative)")
     plt.xlabel("Time (days) since 2016-01-01")
-    
+
+
 def safe_auc(y_true: np.ndarray, y_score: np.ndarray) -> float:
     try:
         return roc_auc_score(y_true, y_score)
     except ValueError:
         return np.nan
-        
+
+
 def get_aucs(df: pl.DataFrame) -> dict[str, float]:
     with_df = df.filter(pl.col("h"))
     without_df = df.filter(~pl.col("h"))
-    
+
     return {
         "all": safe_auc(df["y"].to_numpy(), df["p"].to_numpy()),
         "with_hist": safe_auc(with_df["y"].to_numpy(), with_df["p"].to_numpy()),
-        "no_hist": safe_auc(without_df["y"].to_numpy(), without_df["p"].to_numpy())
+        "no_hist": safe_auc(without_df["y"].to_numpy(), without_df["p"].to_numpy()),
     }
+
 
 def predictions(
     T: TrajectorySpec, tasks: list[dict], split: str = "tuning"
@@ -315,70 +321,51 @@ def predictions(
             agg_exprs[n] = agg_expr.any().alias(n)
     pfx = f"{split}/"
     rel_dfs = {
-        k[len(pfx):]: df.group_by(id_fields, maintain_order=True).agg(**agg_exprs)
-        for k, df in T.trajectories.items() if k.startswith(pfx)
+        k[len(pfx) :]: df.group_by(id_fields, maintain_order=True).agg(**agg_exprs)
+        for k, df in T.trajectories.items()
+        if k.startswith(pfx)
     }
     joint_df = None
     for k, df in rel_dfs.items():
         if joint_df is None:
             joint_df = df
             continue
-        joint_df = (
-            joint_df.join(
-                df, on=id_fields, how="inner", maintain_order="left",
-                suffix=f"/{k}"
-            )
-            .select(
-                *id_fields,
-                *[(pl.col(n)+pl.col(f"{n}/{k}")).alias(n) for n in task_names],
-            )
+        joint_df = joint_df.join(df, on=id_fields, how="inner", maintain_order="left", suffix=f"/{k}").select(
+            *id_fields,
+            *[(pl.col(n) + pl.col(f"{n}/{k}")).alias(n) for n in task_names],
         )
 
-    Y_score = joint_df.select(
-        *id_fields,
-        *[pl.col(n)/len(rel_dfs) for n in task_names]
+    Y_score = joint_df.select(*id_fields, *[pl.col(n) / len(rel_dfs) for n in task_names])
+
+    hist = T.real_histories(split).group_by(id_fields, maintain_order=True).agg(**event_exprs)
+
+    Y_true = T.real_futures(split).group_by(id_fields, maintain_order=True).agg(**agg_exprs)
+
+    Y_score_and_true = Y_score.join(
+        Y_true,
+        on=id_fields,
+        how="full",
+        suffix="/true",
+        coalesce=True,
+        maintain_order="left_right",
+    ).join(
+        hist,
+        on=id_fields,
+        how="full",
+        suffix="/hist",
+        coalesce=True,
+        maintain_order="left_right",
     )
 
-    hist = (
-        T.real_histories(split)
-        .group_by(id_fields, maintain_order=True)
-        .agg(**event_exprs)
-    )
-
-    Y_true = (
-        T
-        .real_futures(split)
-        .group_by(id_fields, maintain_order=True)
-        .agg(**agg_exprs)
-    )
-
-    Y_score_and_true = (
-        Y_score
-        .join(
-            Y_true, on=id_fields, how="full", suffix="/true",
-            coalesce=True, maintain_order="left_right",
-        )
-        .join(
-            hist, on=id_fields, how="full", suffix="/hist",
-            coalesce=True, maintain_order="left_right",
-        )
-    )
-
-    num_missing = Y_score_and_true.select(
-        cs.starts_with("task/").is_null().sum().name.keep()
-    )
+    num_missing = Y_score_and_true.select(cs.starts_with("task/").is_null().sum().name.keep())
 
     aucs = {}
     for task in tqdm(task_names):
-        task_df = (
-            Y_score_and_true
-            .select(
-                pl.col(task).alias("p"),
-                pl.col(f"{task}/true").alias("y"),
-                pl.col(f"{task}/hist").alias("h"),
-            )
-            .filter(pl.col("p").is_not_null() & pl.col("y").is_not_null())
-        )
+        task_df = Y_score_and_true.select(
+            pl.col(task).alias("p"),
+            pl.col(f"{task}/true").alias("y"),
+            pl.col(f"{task}/hist").alias("h"),
+        ).filter(pl.col("p").is_not_null() & pl.col("y").is_not_null())
         aucs[task] = get_aucs(task_df)
 
     return Y_score_and_true, aucs, num_missing
