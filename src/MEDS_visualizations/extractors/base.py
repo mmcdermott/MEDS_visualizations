@@ -68,8 +68,8 @@ class BaseExtractor(Generic[DF_T, PLOT_DATA_T], ABC):
 
         return self
 
-    @abstractmethod
     @property
+    @abstractmethod
     def plot_data(self) -> PLOT_DATA_T:
         """Return the data to be plotted."""
         pass

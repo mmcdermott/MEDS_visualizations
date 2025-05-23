@@ -43,7 +43,7 @@ class CodeFrequency(BaseExtractor, MEDSColumns):
 
     def _extract(self, shard: pl.DataFrame, code_metadata: pl.DataFrame | None = None):
         self.code_counts = shard.group_by("code").agg(**self.CODE_AGG_EXPRS)
-        global_aggs = shard.select(self.GLOBAL_AGG_EXPRS)
+        global_aggs = shard.select(**self.GLOBAL_AGG_EXPRS)
 
         for agg_name in self.GLOBAL_AGG_EXPRS:
             setattr(self, agg_name, global_aggs[agg_name].item())
