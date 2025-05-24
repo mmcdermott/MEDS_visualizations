@@ -42,10 +42,13 @@ class MeasurementsInDuration(BaseExtractor[pl.DataFrame, pl.DataFrame], MEDSColu
         measurement to the index date (which may be zero). Both columns could be negative, zero, or positive.
 
     Examples:
+        >>> _ = pl.Config.set_tbl_rows(15)
         >>> shard = pl.DataFrame({
         ...     "subject_id": [
         ...         1, 1, 1, 1, 1, 1,
         ...         2, 2, 2, 2,
+        ...         3, 3,
+        ...         4, 4,
         ...     ],
         ...     "time": [
         ...         datetime(2020, 1, 1),
@@ -58,11 +61,41 @@ class MeasurementsInDuration(BaseExtractor[pl.DataFrame, pl.DataFrame], MEDSColu
         ...         datetime(2020, 1, 4),
         ...         datetime(2020, 1, 4),
         ...         datetime(2020, 1, 10),
+        ...         datetime(1980, 1, 1),
+        ...         datetime(1990, 1, 1),
+        ...         datetime(2023, 1, 1),
+        ...         datetime(2023, 1, 10),
         ...     ],
         ... })
+        >>> shard
+        shape: (14, 2)
+        ┌────────────┬─────────────────────┐
+        │ subject_id ┆ time                │
+        │ ---        ┆ ---                 │
+        │ i64        ┆ datetime[μs]        │
+        ╞════════════╪═════════════════════╡
+        │ 1          ┆ 2020-01-01 00:00:00 │
+        │ 1          ┆ 2020-01-01 00:00:00 │
+        │ 1          ┆ 2020-01-02 00:00:00 │
+        │ 1          ┆ 2020-01-03 00:00:00 │
+        │ 1          ┆ 2020-01-05 00:00:00 │
+        │ 1          ┆ 2020-01-08 00:00:00 │
+        │ 2          ┆ 2020-01-04 00:00:00 │
+        │ 2          ┆ 2020-01-04 00:00:00 │
+        │ 2          ┆ 2020-01-04 00:00:00 │
+        │ 2          ┆ 2020-01-10 00:00:00 │
+        │ 3          ┆ 1980-01-01 00:00:00 │
+        │ 3          ┆ 1990-01-01 00:00:00 │
+        │ 4          ┆ 2023-01-01 00:00:00 │
+        │ 4          ┆ 2023-01-10 00:00:00 │
+        └────────────┴─────────────────────┘
+
+    At its base, a `MeasurementsInDuration` extractor just needs an index date from which measurement deltas
+    are calculated and returns a dataframe of all measurement offsets and what times are reached at those
+    offsets across all subjects in the dataset who are active at the index date:
+
         >>> extractor = MeasurementsInDuration(index_date=datetime(2020, 1, 4))
-        >>> _ = extractor.fit(shard)
-        >>> extractor.plot_data
+        >>> extractor.fit(shard).plot_data
         shape: (10, 2)
         ┌────────┬─────────────────────┐
         │ offset ┆ time_reached        │
@@ -79,6 +112,65 @@ class MeasurementsInDuration(BaseExtractor[pl.DataFrame, pl.DataFrame], MEDSColu
         │ -1     ┆ 2020-01-04 00:00:00 │
         │ 0      ┆ 2020-01-04 00:00:00 │
         │ 1      ┆ 2020-01-10 00:00:00 │
+        └────────┴─────────────────────┘
+        >>> extractor = MeasurementsInDuration(index_date=datetime(1985, 1, 4))
+        >>> extractor.fit(shard).plot_data
+        shape: (2, 2)
+        ┌────────┬─────────────────────┐
+        │ offset ┆ time_reached        │
+        │ ---    ┆ ---                 │
+        │ i32    ┆ datetime[μs]        │
+        ╞════════╪═════════════════════╡
+        │ 0      ┆ 1980-01-01 00:00:00 │
+        │ 1      ┆ 1990-01-01 00:00:00 │
+        └────────┴─────────────────────┘
+
+    You can constrain the extractor to only include measurements within a certain offset range from the index
+    date:
+
+        >>> extractor = MeasurementsInDuration(index_date=datetime(2020, 1, 4), min_offset=-1, max_offset=1)
+        >>> extractor.fit(shard).plot_data
+        shape: (6, 2)
+        ┌────────┬─────────────────────┐
+        │ offset ┆ time_reached        │
+        │ ---    ┆ ---                 │
+        │ i32    ┆ datetime[μs]        │
+        ╞════════╪═════════════════════╡
+        │ -1     ┆ 2020-01-02 00:00:00 │
+        │ 0      ┆ 2020-01-03 00:00:00 │
+        │ 1      ┆ 2020-01-05 00:00:00 │
+        │ -1     ┆ 2020-01-04 00:00:00 │
+        │ 0      ┆ 2020-01-04 00:00:00 │
+        │ 1      ┆ 2020-01-10 00:00:00 │
+        └────────┴─────────────────────┘
+
+    You can also allow it to include patients who are not active at the index date (though by default they are
+    not included):
+
+        >>> extractor = MeasurementsInDuration(
+        ...     index_date=datetime(2020, 1, 4), filter_to_active_subjects=False
+        ... )
+        >>> extractor.fit(shard).plot_data
+        shape: (12, 2)
+        ┌────────┬─────────────────────┐
+        │ offset ┆ time_reached        │
+        │ ---    ┆ ---                 │
+        │ i32    ┆ datetime[μs]        │
+        ╞════════╪═════════════════════╡
+        │ -3     ┆ 2020-01-01 00:00:00 │
+        │ -2     ┆ 2020-01-01 00:00:00 │
+        │ -1     ┆ 2020-01-02 00:00:00 │
+        │ 0      ┆ 2020-01-03 00:00:00 │
+        │ 1      ┆ 2020-01-05 00:00:00 │
+        │ 2      ┆ 2020-01-08 00:00:00 │
+        │ -2     ┆ 2020-01-04 00:00:00 │
+        │ -1     ┆ 2020-01-04 00:00:00 │
+        │ 0      ┆ 2020-01-04 00:00:00 │
+        │ 1      ┆ 2020-01-10 00:00:00 │
+        │ -1     ┆ 1980-01-01 00:00:00 │
+        │ 0      ┆ 1990-01-01 00:00:00 │
+        │ 1      ┆ 2023-01-01 00:00:00 │
+        │ 2      ┆ 2023-01-10 00:00:00 │
         └────────┴─────────────────────┘
     """
 
