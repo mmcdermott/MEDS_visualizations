@@ -8,7 +8,7 @@ Visualization tools for MEDS datasets.
 ## Installation
 
 ```bash
-pip install MEDS-Viz
+pip install MEDS_visualizations
 ```
 
 ## Usage
