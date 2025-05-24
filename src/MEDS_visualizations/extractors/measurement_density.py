@@ -142,4 +142,7 @@ class MeasurementsInDuration(BaseExtractor[pl.DataFrame, pl.DataFrame], MEDSColu
 
     @property
     def plot_data(self) -> pl.DataFrame:
-        return self.offset_deltas.select("offset", "delta")
+        return self.offset_deltas.select(
+            "offset",
+            (pl.col("delta") + self.index_date).alias("delta")
+        )
