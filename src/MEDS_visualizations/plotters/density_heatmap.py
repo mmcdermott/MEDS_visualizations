@@ -9,13 +9,14 @@ from .base import BasePlotter
 
 SECONDS_IN_DAY = 60 * 60 * 24
 
+
 def remove_outliers(
     plot_data: pl.DataFrame,
     outliers_thresh: float = 0.01,
     outlier_cols: list[str] | None = None,
 ) -> pl.DataFrame:
-    ub = 1 - outliers_thresh/2
-    lb = outliers_thresh/2
+    ub = 1 - outliers_thresh / 2
+    lb = outliers_thresh / 2
 
     if outlier_cols is None:
         outlier_cols = plot_data.columns
@@ -31,14 +32,13 @@ def remove_outliers(
         else:
             continue
 
-        filters.append(
-            (num_col <= num_col.quantile(ub)) & (num_col >= num_col.quantile(lb))
-        )
+        filters.append((num_col <= num_col.quantile(ub)) & (num_col >= num_col.quantile(lb)))
 
     return plot_data.filter(pl.all_horizontal(filters))
 
+
 class DensityHeatmap(BasePlotter[pl.DataFrame, go.Figure]):
-    def __init__(self, x: str, y: str, outliers_thresh: float=0.01, outlier_cols: list[str] | None = None):
+    def __init__(self, x: str, y: str, outliers_thresh: float = 0.01, outlier_cols: list[str] | None = None):
         self.x = x
         self.y = y
         self.outliers_thresh = outliers_thresh
