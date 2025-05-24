@@ -1,11 +1,13 @@
+from collections.abc import Sequence
+from datetime import timedelta
+from typing import Any
+
 import plotly.graph_objects as go
 import polars as pl
-from typing import Sequence, Any
-from datetime import timedelta
 
 from .base import BasePlotter
 
-SECONDS_IN_DAY = 60*60*24
+SECONDS_IN_DAY = 60 * 60 * 24
 
 
 class DensityHeatmap(BasePlotter[pl.DataFrame, go.Figure]):
@@ -25,7 +27,7 @@ class DensityHeatmap(BasePlotter[pl.DataFrame, go.Figure]):
         return go.Figure(
             data=go.Histogram2d(
                 x=x,
-                y=x,
+                y=y,
                 coloraxis="coloraxis",
             )
         ).update_layout(coloraxis={"colorscale": "Viridis"}, title="2D Measurement Density")
