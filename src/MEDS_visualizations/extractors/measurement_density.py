@@ -64,22 +64,22 @@ class MeasurementsInDuration(BaseExtractor[pl.DataFrame, pl.DataFrame], MEDSColu
         >>> _ = extractor.fit(shard)
         >>> extractor.plot_data
         shape: (10, 2)
-        ┌────────┬──────────────┐
-        │ offset ┆ delta        │
-        │ ---    ┆ ---          │
-        │ i32    ┆ duration[μs] │
-        ╞════════╪══════════════╡
-        │ -3     ┆ -3d          │
-        │ -2     ┆ -3d          │
-        │ -1     ┆ -2d          │
-        │ 0      ┆ -1d          │
-        │ 1      ┆ 1d           │
-        │ 2      ┆ 4d           │
-        │ -2     ┆ 0µs          │
-        │ -1     ┆ 0µs          │
-        │ 0      ┆ 0µs          │
-        │ 1      ┆ 6d           │
-        └────────┴──────────────┘
+        ┌────────┬─────────────────────┐
+        │ offset ┆ time_reached        │
+        │ ---    ┆ ---                 │
+        │ i32    ┆ datetime[μs]        │
+        ╞════════╪═════════════════════╡
+        │ -3     ┆ 2020-01-01 00:00:00 │
+        │ -2     ┆ 2020-01-01 00:00:00 │
+        │ -1     ┆ 2020-01-02 00:00:00 │
+        │ 0      ┆ 2020-01-03 00:00:00 │
+        │ 1      ┆ 2020-01-05 00:00:00 │
+        │ 2      ┆ 2020-01-08 00:00:00 │
+        │ -2     ┆ 2020-01-04 00:00:00 │
+        │ -1     ┆ 2020-01-04 00:00:00 │
+        │ 0      ┆ 2020-01-04 00:00:00 │
+        │ 1      ┆ 2020-01-10 00:00:00 │
+        └────────┴─────────────────────┘
     """
 
     index_date: datetime
@@ -142,4 +142,4 @@ class MeasurementsInDuration(BaseExtractor[pl.DataFrame, pl.DataFrame], MEDSColu
 
     @property
     def plot_data(self) -> pl.DataFrame:
-        return self.offset_deltas.select("offset", (pl.col("delta") + self.index_date).alias("delta"))
+        return self.offset_deltas.select("offset", (pl.col("delta") + self.index_date).alias("time_reached"))
