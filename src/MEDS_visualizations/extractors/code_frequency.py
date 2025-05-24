@@ -9,7 +9,7 @@ from .base import BaseExtractor
 from .meds_pl_mixin import MEDSColumns
 
 
-class CodeFrequency(BaseExtractor, MEDSColumns):
+class CodeFrequency(BaseExtractor[pl.DataFrame, pl.DataFrame], MEDSColumns):
     """An extractor that counts the frequency of each code in a given dataset."""
 
     as_proportions: bool

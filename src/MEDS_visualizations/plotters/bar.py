@@ -4,7 +4,7 @@ import polars as pl
 from .base import BasePlotter
 
 
-class Bar(BasePlotter):
+class Bar(BasePlotter[pl.DataFrame, go.Figure]):
     top_k: int
     x_col: str | None
     y_cols: list[str] | None
