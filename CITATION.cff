@@ -1,0 +1,20 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: MEDS Visualizations
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Matthew
+    family-names: McDermott
+    email: mattmcdermott8@gmail.com
+    orcid: 'https://orcid.org/0000-0001-6048-9707'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.17536408
+repository-code: 'https://github.com/mmcdermott/MEDS_visualizations'
+abstract: Visualization tools for MEDS datasets.
+license: MIT

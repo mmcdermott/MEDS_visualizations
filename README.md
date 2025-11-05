@@ -1,5 +1,7 @@
 # MEDS Visualizations
 
+[![DOI](https://zenodo.org/badge/987265452.svg)](https://doi.org/10.5281/zenodo.17536407)
+
 Visualization tools for MEDS datasets.
 
 > [!WARNING]
