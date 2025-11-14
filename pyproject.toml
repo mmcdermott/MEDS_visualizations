@@ -17,21 +17,25 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-  "polars >= 1.26.0, <= 1.27.9",
+  "polars~=1.35",
   "plotly",
   "meds~=0.4.0",
   "jupyter",
 ]
 
-[tool.setuptools_scm]
-
-[project.optional-dependencies]
-dev = ["pre-commit<4", "ruff"]
-tests = [
+[dependency-groups]
+dev = [
+  "pre-commit<4",
+  "ruff",
   "pytest-cov",
   "pytest",
   "meds_testing_helpers~=0.3.0",
 ]
+
+[project.optional-dependencies]
+
+
+[tool.setuptools_scm]
 
 [project.urls]
 Homepage = "https://github.com/mmcdermott/MEDS_visualizations"

@@ -151,7 +151,7 @@ class MeasurementsInDuration(BaseExtractor[pl.DataFrame, pl.DataFrame], MEDSColu
         ...     index_date=datetime(2020, 1, 4), filter_to_active_subjects=False
         ... )
         >>> extractor.fit(shard).plot_data
-        shape: (12, 2)
+        shape: (14, 2)
         ┌────────┬─────────────────────┐
         │ offset ┆ time_reached        │
         │ ---    ┆ ---                 │
@@ -211,17 +211,20 @@ class MeasurementsInDuration(BaseExtractor[pl.DataFrame, pl.DataFrame], MEDSColu
 
         with_deltas = shard.with_columns((self.TIME - self.index_date).alias("delta"))
 
-        index_subj_row_idx = self.TIME.search_sorted(self.index_date, side="right").first() - 1
-
-        index_date_indices = with_deltas.group_by(self.SUBJECT_ID).agg(
-            pl.col(row_idx).get(index_subj_row_idx).alias("index_idx")
+        subj_indices = with_deltas.group_by(self.SUBJECT_ID).agg(
+            pl.col(row_idx).first().alias("first_row_per_subj"),
+            (self.TIME.search_sorted(self.index_date, side="right").first().cast(pl.Int32)).alias(
+                "per_subj_index_offset"
+            ),
         )
 
         self.offset_deltas = with_deltas.join(
-            index_date_indices, on=self.SUBJECT_ID, how="left", maintain_order="left"
+            subj_indices, on=self.SUBJECT_ID, how="left", maintain_order="left"
         ).select(
             "delta",
-            (pl.col(row_idx) - pl.col("index_idx")).alias("offset"),
+            (pl.col(row_idx) - pl.col("first_row_per_subj") - pl.col("per_subj_index_offset") + 1).alias(
+                "offset"
+            ),
         )
 
         if self.min_offset is not None:
